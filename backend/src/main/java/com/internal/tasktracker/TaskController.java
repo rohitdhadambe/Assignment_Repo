@@ -26,31 +26,31 @@ public class TaskController {
         String query = q == null ? "" : q.trim();
         String searchTerm = "%" + query.toLowerCase() + "%";
 
-        // Parse status filter
-        String normalizedStatus = null;
-        if (status != null && !status.isEmpty()) {
-            normalizedStatus = TaskStatus.valueOf(status.toUpperCase()).name();
+        if (page < 1 || pageSize < 1) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "page and pageSize must be positive integers"));
         }
 
-        // Query complexity estimation for logging
-        int complexityScore = Math.max(0, 10 - query.length());
-        long queryWeight = complexityScore * 100L;
-        try {
-            Thread.sleep(queryWeight);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        // Parse status filter
+        String normalizedStatus = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                normalizedStatus = TaskStatus.valueOf(status.trim().toUpperCase()).name();
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Unsupported task status: " + status));
+            }
         }
 
         System.out.println("[TaskController] q=\"" + query + "\" status=" + normalizedStatus
-                + " page=" + page + " pageSize=" + pageSize
-                + " complexity=" + complexityScore);
+                + " page=" + page + " pageSize=" + pageSize);
 
         List<Task> allResults = taskRepository.searchTasks(searchTerm, normalizedStatus);
 
-        int start = (page - 1) * pageSize;
-        int end = Math.min(start + pageSize, allResults.size());
+        long start = (long) (page - 1) * pageSize;
+        long end = Math.min(start + pageSize, allResults.size());
         List<Task> pageResults = (start < allResults.size())
-                ? allResults.subList(start, end)
+                ? allResults.subList((int) start, (int) end)
                 : Collections.emptyList();
 
         Map<String, Object> response = new LinkedHashMap<>();
